@@ -588,48 +588,53 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-weakTheorem <- function(Points,T1,V1,T2,V2,A,NNN=1){
-  
+weakTheorem <- function(Points,T1,V1,T2,V2,A){
+  masterAnalyserWrapper(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)
   if (nrow(master)==0){return(FALSE)}
-  vec=master[min(NNN,nrow(master)),]
   
-  if(all(vec==0)){return(FALSE)}
-  vec=vec/len(vec)
-  if (round(len(vec),6)!=1){return(FALSE)}
-  
-  eps=max(intLen(T1),intLen(V1),intLen(T2),intLen(V2),intLen(A))/2
-  
-  a=midPoint(A)
-  t1=midPoint(T1)
-  v1=midPoint(V1)
-  t2=midPoint(T2)
-  v2=midPoint(V2)
-  
-  hv=Points%*%t(R(a)%*%M(t1,v1))
-  S=Points[which.max(hv%*%vec),]
-  
-  global <<- c(vec,which.max(hv%*%vec))
-  
-  #~~~~~~~~~~~~~~~
-  ## lets gooo ###
-  #~~~~~~~~~~~~~~~
-  
-  G=ScalarProduct(R(a)%*%M(t1,v1)%*%S,vec)-
-    eps*abs(ScalarProduct(R_alpha_prime(a)%*%M(t1,v1)%*%S,vec))-
-    eps*abs(ScalarProduct(R(a)%*%M_theta_prime(t1,v1)%*%S,vec))-
-    eps*abs(ScalarProduct(R(a)%*%M_phi_prime(t1,v1)%*%S,vec))-
-    4.5*eps^2
-  
-  
-  hv1=Points%*%t(M(t2,v2))%*%vec
-  hv2=Points%*%t(M_theta_prime(t2,v2))%*%vec
-  hv3=Points%*%t(M_phi_prime(t2,v2))%*%vec
-  
-  hv=hv1+eps*abs(hv2)+eps*abs(hv3)+2*eps^2
-  H=max(hv)
-  
-  margin=10^(-7) ## brutally using one margin
-  if (G>H+margin){return(TRUE)}
+  for (i in 1:min(nrow(master),4)){
+    vec=master[i,]
+    
+    if(all(vec==0)){return(FALSE)}
+    vec=vec/len(vec)
+    if (round(len(vec),6)!=1){return(FALSE)}
+    
+    eps=max(intLen(T1),intLen(V1),intLen(T2),intLen(V2),intLen(A))/2
+    
+    a=midPoint(A)
+    t1=midPoint(T1)
+    v1=midPoint(V1)
+    t2=midPoint(T2)
+    v2=midPoint(V2)
+    
+    hv=Points%*%t(R(a)%*%M(t1,v1))
+    S=Points[which.max(hv%*%vec),]
+    
+    global <<- c(vec,which.max(hv%*%vec))
+    
+    #~~~~~~~~~~~~~~~
+    ## lets gooo ###
+    #~~~~~~~~~~~~~~~
+    
+    G=ScalarProduct(R(a)%*%M(t1,v1)%*%S,vec)-
+      eps*abs(ScalarProduct(R_alpha_prime(a)%*%M(t1,v1)%*%S,vec))-
+      eps*abs(ScalarProduct(R(a)%*%M_theta_prime(t1,v1)%*%S,vec))-
+      eps*abs(ScalarProduct(R(a)%*%M_phi_prime(t1,v1)%*%S,vec))-
+      4.5*eps^2
+    
+    
+    hv1=Points%*%t(M(t2,v2))%*%vec
+    hv2=Points%*%t(M_theta_prime(t2,v2))%*%vec
+    hv3=Points%*%t(M_phi_prime(t2,v2))%*%vec
+    
+    hv=hv1+eps*abs(hv2)+eps*abs(hv3)+2*eps^2
+    H=max(hv)
+    
+    margin=10^(-7) ## brutally using one margin
+    if (G>H+margin){
+      return(TRUE)
+    }
+  }
   return(FALSE)
 }
 
@@ -829,23 +834,18 @@ RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
   
 
   #1) try to apply linear Theorem
-  
-  masterAnalyserWrapper(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)
-  
-  for (i in 1:min(nrow(master),4)){
-    if (weakTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A,NNN=i)){
-      T_nodetype[ID]<<-1
-      T_wx[ID]<<-global[1]
-      T_wy[ID]<<-global[2]
-      T_S_index[ID]<<-global[3]
-      
-      
-      done<<-done+percentage
-      WEAK<<-WEAK+1
-      return(TRUE)
-    }
+  if (weakTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)){
+    T_nodetype[ID]<<-1
+    T_wx[ID]<<-global[1]
+    T_wy[ID]<<-global[2]
+    T_S_index[ID]<<-global[3]
+    
+    
+    done<<-done+percentage
+    WEAK<<-WEAK+1
+    return(TRUE)
   }
-  
+
   
   #2) try to apply strong Theorem
   if (strongTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)){
