@@ -5,16 +5,16 @@
 # This script generates the solution tree for the Noperthedron
 
 # It recursively applies the function "RupertDisprover" to an interval in R^5.
-# It determines wether the local or global Theorem can be applied.
-# Otherwise, it splits the intervals into different parts and calls itself on
+# It determines whether the local or global Theorem can be applied.
+# Otherwise, it splits the interval into different parts and calls itself on
 # each of those intervals.
 
 # While this function executes, it stores the nodes and how they can be solved
 # in a table "df". However, as accessing elements of a table is very slow,
 # we store each column independently. ("T_ID", "T_nodetype",...)
 
-# Finally these columns are combined to the dataframe and can be exported as
-# a csv. The code written in Sage can then verify that the solution tree is
+# Finally these columns are combined to the solution tree and can be exported as
+# a csv. The code written in SageMath can then verify that the solution tree is
 # valid.
 
 
@@ -42,7 +42,7 @@ intLen <- function(interval){
 }
 
 midPoint <- function(interval){
-  ## returns the length of an interval
+  ## returns the midpoint of an interval
   return(sum(interval)/2) 
 }
 
@@ -80,7 +80,7 @@ is.int <- function(a){
   return(all(abs(round(a)-a)<0.0001))
 }
 
-approximate_rational <- function(x, precision = 0.00001) {
+approximateRational <- function(x, precision = 0.00001) {
   ## Given a number x, it returns an integer sequence r of length 2,
   ## such that r[1]/r[2] is approximately x.
   
@@ -89,8 +89,6 @@ approximate_rational <- function(x, precision = 0.00001) {
   
   if (x==0){return(c(0,1))}
   initial_x = x
-  
-  a <- floor(x)
   
   ## initial approximation
   num1= 1
@@ -137,29 +135,28 @@ approx_on_circle_helper = function(P,precision=0.00001){
   
   ## (2*t1*t2 , t1^2-t2^2) / (t1^2+t2^2)
   
+  ## it returns c(numer1, numer2, common_denom)
+  
   x = P[1]
   y = P[2]
   t = x/(1-y)
   
-  t_rational = approximate_rational(t, precision=precision)
+  t_rational = approximateRational(t, precision=precision)
   t1=t_rational[1]
   t2=t_rational[2]
   
   ans = c(2*t1*t2, t1^2-t2^2, t1^2+t2^2)
   
   if(any(ans>9*10^15)){
-    t_rational = as.bigz(approximate_rational(t, precision=precision))
+    t_rational = as.bigz(approximateRational(t, precision=precision))
     t1=t_rational[1]
     t2=t_rational[2]
     
     ans = c(2*t1*t2,t1^2-t2^2,t1^2+t2^2)
   }
   g = gcd(gcd(ans[1],ans[2]),ans[3])
-  
-  ## ... after doing the gcd calculation
-  ## we should check if bigz is still necessary! 
-  
-  return(ans/g) #numer1,numer2,common_denom
+
+  return(ans/g)
 }
 
 
@@ -175,20 +172,20 @@ approx_on_circle <- function(P){
   }
 }
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-### 3.3 Algebtra and Geometry ####
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+### 3.3 Algebra and Geometry ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 ScalarProduct <- function(v1,v2){return(sum(v1*v2))}
 
 len <- function(v){
-  ## the euclidean norm of a vector
+  ## the Euclidean norm of a vector
   return(sqrt(sum(v^2)))
 }
 
 len_matrix <- function(v){
-  ## returns the euclidean norm of one or more vectors
+  ## returns the Euclidean norm of one or more vectors
   return(sqrt(rowSums(v^2)))
 }
 
@@ -198,8 +195,8 @@ Rz <- function(a){
 }
 
 M <- function(theta,phi){
-  ### returns the projection matrix defined by the parameters
-  ### the mapping is orthogonal to X(theta,phi)=(cos(theta)*sin(phi),sin(theta)*sin(phi),cos(phi))
+  ## returns the projection matrix defined by the parameters
+  ## the mapping is orthogonal to X(theta,phi)=(cos(theta)*sin(phi),sin(theta)*sin(phi),cos(phi))
   
   A=matrix(nrow=2,ncol=3)
   A[1,]=c(-sin(theta),cos(theta),0)
@@ -257,46 +254,18 @@ ConvexHull <- function(points){
 #~~~~~~~~~~~~~~~~~
 
 
-masterAnalyserWrapper <- function(Points,T1,V1,T2,V2,A){
-  t1=midPoint(T1)
-  v1=midPoint(V1)
-  t2=midPoint(T2)
-  v2=midPoint(V2)
-  a=midPoint(A)
+w_candidates_calc <- function(Outside,P){
+  ## This function is used for the global theorem.
   
-  P=Points%*%t(M(t1,v1))
-  P=P%*%t(R(a))
-  Q=Points%*%t(M(t2,v2))
-  
-  QHull=ConvexHull(Q)
-  PHull=ConvexHull(P)
-  
-  Outside=PHull[point.in.polygon(PHull[,1],PHull[,2],
-                                       QHull[,1],QHull[,2])!=1,]
-  
-  Outside=matrix(Outside,ncol=2) ##I am scared:(
-  if (nrow(Outside)==0){master<<-matrix(nrow=0,ncol=2);return()}
-
-  master<<-masterAnalyser(Outside,QHull)
-  master<<-matrix(master,ncol=2) ##I am scared:(
-  master<<-master[master[,1]>=0,] ##only keep half
-  master<<-matrix(master,ncol=2)
-  ## warning!!! I used "as.matrix" instead of "matrix" and it broke everything, see "as.matrix(c(1,2),nrow=1)"
-  if (nrow(master)==1){return()}
-  master<<-master[order(len_matrix(master),decreasing = T),]
-}
-
-
-masterAnalyser <- function(Outside,P){
   ## This function is given a set of points "Outside" and a second set "P".
   ## All the points of "Outside" are outside of "P".
   
-  ## For each of the outside points, we calcalate the minimal distance to P.
+  ## For each of the outside points, we calculate the minimal distance to P.
   ## Specifically, the minimal vectors to P will be returned.
   
   ## Hence this function returns a nrow(Outside) x 2 matrix
   
-  ## This function is extremely efficiently
+  ## This function is extremely efficient
   
   #~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   ## Distances to Vertices ####
@@ -312,7 +281,7 @@ masterAnalyser <- function(Outside,P){
   
   whichVertexClosest=apply(dists2,1,which.min)
   
-  res1[,1]=vec_x[cbind(1:nrow(Outside),whichVertexClosest)] ## wow, this is great R syntax
+  res1[,1]=vec_x[cbind(1:nrow(Outside),whichVertexClosest)]
   res1[,2]=vec_y[cbind(1:nrow(Outside),whichVertexClosest)]
   res1=-res1
   
@@ -369,16 +338,13 @@ masterAnalyser <- function(Outside,P){
   EdgesEndX=matrix(rep(Edges[,3],nrow(Outside)),ncol=nrow(Edges),byrow = T)
   EdgesEndY=matrix(rep(Edges[,4],nrow(Outside)),ncol=nrow(Edges),byrow = T)
   
-  ## I am not so happy about the following lines
   ## There were cases, where ">" did not suffice and ">=" was needed.
   ## This is the case, when the edge is (almost) perfectly vertical or horizontal
-  ## maybe I should include a safety margin...
-  ## I am not happy:(
+  
   proj_x_ok=(EdgesStartX<=proj_x & proj_x<=EdgesEndX) | (EdgesStartX>=proj_x & proj_x>=EdgesEndX)
   proj_y_ok=(EdgesStartY<=proj_y & proj_y<=EdgesEndY) | (EdgesStartY>=proj_y & proj_y>=EdgesEndY)
   
-  proj_ok=proj_x_ok|proj_y_ok ## after many thoughts, I changed it from "&" to "|"
-  ##This should fix the vertical/horizontal problem
+  proj_ok=proj_x_ok|proj_y_ok
   
   ## calculate Valid Distances
   Lengths=abs(scalarDif)
@@ -412,9 +378,45 @@ masterAnalyser <- function(Outside,P){
 }
 
 
+w_candidates_calc_wrapper <- function(Points,T1,V1,T2,V2,A){
+  ## It calculates the Projections from the midpoints of the intervals
+  ## and returns possible w's for the global theorem in the global
+  ## nx2 matrix called w_candidates
+  
+  t1=midPoint(T1)
+  v1=midPoint(V1)
+  t2=midPoint(T2)
+  v2=midPoint(V2)
+  a=midPoint(A)
+  
+  P=Points%*%t(M(t1,v1))
+  P=P%*%t(R(a))
+  Q=Points%*%t(M(t2,v2))
+  
+  QHull=ConvexHull(Q)
+  PHull=ConvexHull(P)
+  
+  Outside=PHull[point.in.polygon(PHull[,1],PHull[,2],
+                                       QHull[,1],QHull[,2])!=1,]
+  
+  Outside=matrix(Outside,ncol=2)
+  if (nrow(Outside)==0){w_candidates<<-matrix(nrow=0,ncol=2);return()}
+
+  w_candidates<<-w_candidates_calc(Outside,QHull)
+  w_candidates<<-matrix(w_candidates,ncol=2)
+  w_candidates<<-w_candidates[w_candidates[,1]>=0,] ##only keep half
+  w_candidates<<-matrix(w_candidates,ncol=2)
+  
+  if (nrow(w_candidates)==1){return()}
+  w_candidates<<-w_candidates[order(len_matrix(w_candidates),decreasing = T),]
+}
 
 
-strong_Oracle <- function(Points,T1,V1,T2,V2,A){
+
+
+
+
+localOracle <- function(Points,T1,V1,T2,V2,A){
   # returns indices for P1,P2,P3,Q1,Q2,Q3; the signs s_p and s_q; and round(1000*r)
   # if not found, return 0
   # note: round(1000*r) is returned so that all return values are integers
@@ -456,9 +458,6 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
   PHull_cand=intersect(PHull_cand,which(PHull_cand_hv))
   QHull_cand=intersect(QHull_cand,which(QHull_cand_hv))
   
-  #QHull_cand_hv=sqrt(Q[,1]^2+Q[,2]^2)>=rho*r+1.42*rho*eps #this check is no longer necessary
-  #QHull_cand=intersect(QHull_cand,which(QHull_cand_hv))
-  
   if (length(PHull_cand)<3){return(0)}
   if (length(QHull_cand)<3){return(0)}
   
@@ -467,24 +466,20 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
   #colnames(Pairs)=c("P_index","Q_index")
   
   
-  ## can be replaced by these lines
   dif_x=outer(P[Pairs[,1],1],Q[QHull_cand,1],"-")
   dif_y=outer(P[Pairs[,1],2],Q[QHull_cand,2],"-")
   dists2=dif_x^2+dif_y^2
   Pairs[,2]=QHull_cand[apply(dists2,1,which.min)]
   
-  
-  
-  ## Note from 22.09.2024: The following line does nothing, correct?
   Pairs=Pairs[Pairs[,2]%in%QHull_cand,]
-  if (length(Pairs)<3*3){return(0)} ## this is because R is stupid
+  if (length(Pairs)<3*3){return(0)} ## this is because Pairs could be a sequence
   
   Pairs=cbind(Pairs,delta=0,type=0,maxDelta=-Inf)
   
   ## delta based on the initial definition:
   Pairs[,3]=len_matrix(P[Pairs[,1],]-Q[Pairs[,2],])/2
   
-  ## in Q is in the front or the back:
+  ## Q is in the front or the back:
   Pairs[,4]=-1+2*(Points[Pairs[,2],]%*%X2>0)
 
   for (i in 1:nrow(Pairs)){
@@ -492,26 +487,22 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
     
     maxDelta=Inf
     ## pruning:
-    if (maxDelta<Pairs[i,3]){break} ## this is from 26.04.2024
+    if (maxDelta<Pairs[i,3]){break}
     
     M2_asd=M(t2,v2)
     Q=Points%*%t(M2_asd)
     
     tries=1:nrow(Points)
     tries=tries[tries!=q_ind]
-    noms=len(Q[q_ind,])^2-Q[tries,]%*%Q[q_ind,]-len_matrix(t(t(Points[tries,])-Points[q_ind,]))  *  (2*sqrt(2)*rho*eps+2*rho*eps^2)
+    noms=len(Q[q_ind,])^2-Q[tries,]%*%Q[q_ind,]-len_matrix(t(t(Points[tries,])-Points[q_ind,]))*(2*sqrt(2)*rho*eps+2*rho*eps^2)
     noms=noms-10000*(10)^(-10)## kappa adjustment
     
     dens=(len(Q[q_ind,])+1.42*rho*eps)*
       (len_matrix(Q[rep(q_ind,length(tries)),]-Q[tries,])+2.84*rho*eps)
     fracs=noms/dens*0.95 ## new kappa adjustment
     
-    ## maxDelta=min(maxDelta,(fracs-4.5*eps)*(2*r*rho)/2) ## this is the old version, I suspect it was wrong (today 24.4.2024)
     maxDelta=min(maxDelta,(fracs-4.5*eps/(2*r))*(r*rho))
     
-    
-    
-    #print(fracs)
     
     Pairs[i,5]=maxDelta*0.95 ## kappa adjustment
     
@@ -519,14 +510,12 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
   
   Pairs=Pairs[Pairs[,5]>=Pairs[,3],]
   
-  #print(Pairs)
-  ## Checkpoint: 10.4
-  
-  if (length(Pairs)<3*3){return(0)} ## this is because R is stupid
+  if (length(Pairs)<3*3){return(0)} ## this is because Pairs could be a sequence
   
   Q=Points%*%t(M2)
   mnk=nrow(Pairs)
   
+  ## checking epsilon-spanning condition
   for (i in 1:(mnk-1)){
     p1=Pairs[i,1]
     for (j in (i+1):mnk){
@@ -555,16 +544,8 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
         
         mm=Pairs[c(i,j,k),]
         
-        
         if (max(mm[,3])>min(mm[,5])){next}
         
-        ## I think we are all clear:
-        
-        ## Note from 22.09.2024:
-        ## turns out, we are not all clear:
-        ## this is because sometimes the Pairs-matching above yields strange results
-        ## I could be more exclusive when finding those pairs
-        ## However, for now I simply check here that L condition
         M1=Points[mm[,1],]
         M2=Points[mm[,2],]
         L=solve(M1,M2)
@@ -572,28 +553,29 @@ strong_Oracle <- function(Points,T1,V1,T2,V2,A){
         
         return(c(mm[,1],mm[,2],1,mm[1,4],round(1000*r)))
         
-        
       }
     }
   }
   
   return(0)
-  
 }
 
 
 
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 5. Local and Global Theorem ####
+## 5. Global and Local Theorem ####
 #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-weakTheorem <- function(Points,T1,V1,T2,V2,A){
-  masterAnalyserWrapper(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)
-  if (nrow(master)==0){return(FALSE)}
+globalTheorem <- function(Points,T1,V1,T2,V2,A){
+  ## gets Polyhedron and range and returns True or False, depending on
+  ## whether the global theorem can be applied
   
-  for (i in 1:min(nrow(master),4)){
-    vec=master[i,]
+  w_candidates_calc_wrapper(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)
+  if (nrow(w_candidates)==0){return(FALSE)}
+  
+  for (i in 1:min(nrow(w_candidates),4)){
+    vec=w_candidates[i,]
     
     if(all(vec==0)){return(FALSE)}
     vec=vec/len(vec)
@@ -607,14 +589,10 @@ weakTheorem <- function(Points,T1,V1,T2,V2,A){
     t2=midPoint(T2)
     v2=midPoint(V2)
     
-    hv=Points%*%t(R(a)%*%M(t1,v1))
-    S=Points[which.max(hv%*%vec),]
+    P=Points%*%t(R(a)%*%M(t1,v1))
+    S=Points[which.max(P%*%vec),]
     
-    global <<- c(vec,which.max(hv%*%vec))
-    
-    #~~~~~~~~~~~~~~~
-    ## lets gooo ###
-    #~~~~~~~~~~~~~~~
+    global <<- c(vec,which.max(P%*%vec))
     
     G=ScalarProduct(R(a)%*%M(t1,v1)%*%S,vec)-
       eps*abs(ScalarProduct(R_alpha_prime(a)%*%M(t1,v1)%*%S,vec))-
@@ -638,14 +616,11 @@ weakTheorem <- function(Points,T1,V1,T2,V2,A){
   return(FALSE)
 }
 
-strongTheorem <- function(Points,T1,V1,T2,V2,A){
-  # consults strongOracle
-  # returns false if not applicable
-  # returns true if applicable
+localTheorem <- function(Points,T1,V1,T2,V2,A){
+  ## gets Polyhedron and range and returns True or False, depending on
+  ## whether the local theorem can be applied
   
-  ## this is the latest version without the |Qi-A|<2R estimate
-  
-  res=strong_Oracle(Points,T1,V1,T2,V2,A)
+  res=localOracle(Points,T1,V1,T2,V2,A)
   
   if (res[1]==0){return(FALSE)}
   
@@ -706,25 +681,21 @@ strongTheorem <- function(Points,T1,V1,T2,V2,A){
   
   if (any(abs(L%*%t(L)-diag(3))>0.00001)){return(FALSE)}
   
-  #~~~~~~~~~~~~~~~~~~~~~~~~~
-  ## That s_p condition ####
-  #~~~~~~~~~~~~~~~~~~~~~~~~~
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ## That A_epsilon condition ####
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
   if (s_p*ScalarProduct(X_1,P1)<=sqrt(2)*rho*eps){return(FALSE)}
   if (s_p*ScalarProduct(X_1,P2)<=sqrt(2)*rho*eps){return(FALSE)}
   if (s_p*ScalarProduct(X_1,P3)<=sqrt(2)*rho*eps){return(FALSE)}
   
-  #~~~~~~~~~~~~~~~~~~~~~~~~~  
-  ## That s_q condition ####
-  #~~~~~~~~~~~~~~~~~~~~~~~~~  
-  
   if (s_q*ScalarProduct(X_2,Q1)<=sqrt(2)*rho*eps){return(FALSE)}
   if (s_q*ScalarProduct(X_2,Q2)<=sqrt(2)*rho*eps){return(FALSE)}
   if (s_q*ScalarProduct(X_2,Q3)<=sqrt(2)*rho*eps){return(FALSE)}
   
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~  
-  ## Those many inequalities ####
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ## That epsilon-spanning condition ####
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
   if (ScalarProduct(R(pi/2)%*%M(t1,v1)%*%P1,M(t1,v1)%*%P2)<=g){return(FALSE)}
   if (ScalarProduct(R(pi/2)%*%M(t1,v1)%*%P2,M(t1,v1)%*%P3)<=g){return(FALSE)}
@@ -742,9 +713,9 @@ strongTheorem <- function(Points,T1,V1,T2,V2,A){
   if (len(M(t2,v2)%*%Q2)<=r*rho+1.42*rho*eps){return(FALSE)}
   if (len(M(t2,v2)%*%Q3)<=r*rho+1.42*rho*eps){return(FALSE)}
   
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-  ## That rational inequality ####
-  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+  ## That B_epsilon condition (vectorized) ####
+  #~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
   
   
   for (j in 1:3){
@@ -759,10 +730,8 @@ strongTheorem <- function(Points,T1,V1,T2,V2,A){
     
     dens=(len(M(t2,v2)%*%Qi)+1.42*rho*eps) * (len_matrix(t(t(As)-Qi)%*%t(M(t2,v2)))+2.84*rho*eps)
     fracs=noms/dens
-    if (any(fracs<(4.5*rho*eps+2*delta)/(2*r*rho))){stop("THIS SHOULD NOT HAPPEN!!!");return(FALSE)}
-  
+    if (any(fracs<(4.5*rho*eps+2*delta)/(2*r*rho))){return(FALSE)}
   }
-  
   
   return(TRUE)
 }
@@ -777,20 +746,21 @@ strongTheorem <- function(Points,T1,V1,T2,V2,A){
 RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
   ## returns true if a solution can be disproven
   ## returns false otherwise (or throws an error)
+  
   if (depth==0){
     START<<-as.double(Sys.time())
     CALLED<<-0
     MAXDEPTH<<-0
     done<<-0
     todo<<-intLen(T1)*intLen(V1)*intLen(T2)*intLen(V2)*intLen(A)
-    WEAK<<-0
-    STRONG<<-0
+    GLOBAL<<-0
+    LOCAL<<-0
   }
   
   recovery <<- c(T1,V1,T2,V2,A)
   CALLED<<-CALLED+1
-  
   MAXDEPTH<<-max(MAXDEPTH,depth)
+  
   percentage=intLen(T1)*intLen(V1)*intLen(T2)*intLen(V2)*intLen(A)/todo
   
   
@@ -806,7 +776,7 @@ RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
         "V2: ",myRound(midPoint(V2),4),";  ",
         "A: " ,myRound(midPoint(A),4),sep="")
     str[2]=paste("called ",CALLED,"; depth ",depth,"; max ",MAXDEPTH,"; ")
-    str[3]=paste("strong ",STRONG,"; weak ",WEAK,"  ")
+    str[3]=paste("local ",LOCAL,"; global ",GLOBAL,"  ")
     str[4]=paste("passed ",duration2string(passed),"; total h ",total,"; done ",done)
     cat("\r")
     for (i in 1:4){
@@ -834,7 +804,7 @@ RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
   
 
   #1) try to apply linear Theorem
-  if (weakTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)){
+  if (globalTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)){
     T_nodetype[ID]<<-1
     T_wx[ID]<<-global[1]
     T_wy[ID]<<-global[2]
@@ -842,13 +812,13 @@ RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
     
     
     done<<-done+percentage
-    WEAK<<-WEAK+1
+    GLOBAL<<-GLOBAL+1
     return(TRUE)
   }
 
   
-  #2) try to apply strong Theorem
-  if (strongTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)){
+  #2) try to apply local Theorem
+  if (localTheorem(Points=Points,T1=T1,V1=V1,T2=T2,V2=V2,A=A)){
     T_nodetype[ID]<<-2
     
     T_P1_index[ID]<<-global[1]
@@ -862,7 +832,7 @@ RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
     T_r[ID]<<-global[9]
     
     done<<-done+percentage
-    STRONG<<-STRONG+1
+    LOCAL<<-LOCAL+1
     return(TRUE)
   }
   
@@ -925,15 +895,14 @@ RupertDisprover <- function(Points,T1,V1,T2,V2,A,depth=0,ID=1){
   return(TRUE)
 }
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 7. Loading the solid ####
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## 7. Load the Noperthedron ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
-## this is the new sexy polyhedron:
 C1=c(152024884,0,210152163 )/259375205
-C2=c(0.6632738028,0.6106948881,0.3980949609)
-C3=c(0.8193990033,0.5298215096,0.1230614493)
+C2=c(6632738028,6106948881,3980949609)/10^10
+C3=c(8193990033,5298215096,1230614493)/10^10
 
 
 
@@ -951,9 +920,9 @@ rm(C1,C2,C3)
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 8. Generating the solution tree ####
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## 8. Generate the solution tree ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
 
 n=19*10^6 ## that much space will be allocated
@@ -999,17 +968,17 @@ RupertDisprover(Points,
 
 
 
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-## 9. Processing and storing the data ####
-#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+## 9. Process and store the data ####
+#~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 
-df=data.frame(T_ID,T_nodetype,T_nrChildren, ## meta stuff
+df=data.frame(T_ID,T_nodetype,T_nrChildren,
               T_IDfirstChild,T_split,
-              T_T1_min,T_T1_max,T_V1_min,T_V1_max, ## intervals
+              T_T1_min,T_T1_max,T_V1_min,T_V1_max,
               T_T2_min,T_T2_max,T_V2_min,T_V2_max,
               T_A_min ,T_A_max,
-              T_wx,T_wy,T_S_index, ## weak shit
-              T_P1_index,T_P2_index,T_P3_index,## strong shit
+              T_wx,T_wy,T_S_index,
+              T_P1_index,T_P2_index,T_P3_index,
               T_Q1_index,T_Q2_index,T_Q3_index,
               T_r,T_s_p,T_s_q)
 df=as.data.table(df)
@@ -1017,7 +986,7 @@ df=df[1:(nextUnused-1)]
 colnames(df)=substr(colnames(df),3,100)
 
 
-### 9.1 Fixing the differences between Sage and R ####
+### 9.1 Fix the differences between SageMath and R ####
 
 # R starts counting from 1, while SageMath starts counting from 0
 
@@ -1042,9 +1011,9 @@ setnames(df,"s_q","sigma_Q")
 
 
 
-### 9.2 Storing the interval endpoints as integers ####
+### 9.2 Store the interval endpoints as integers ####
 
-factorIntervals=2^13*3*5^4 ## = 15360000 seems to be optimal
+factorIntervals=2^13*3*5^4 ## N = 15360000
 
 is.int(df[,T1_min]*factorIntervals)
 is.int(df[,T1_max]*factorIntervals)
@@ -1072,13 +1041,12 @@ df[,A_max :=round(A_max *factorIntervals)]
 
 
 
-### 9.3 Making the vector w in the global theorem rational ####
+### 9.3 Make the vector w in the global theorem rational ####
 
-## we don't want to access the df unnecessarily 
 wx=df$wx
 wy=df$wy
 
-## here we will store the results:
+## store the results:
 wx_nominator=rep(NA,nrow(df))
 wy_nominator=rep(NA,nrow(df))
 w_denominator=rep(NA,nrow(df))
@@ -1099,12 +1067,10 @@ df$wy_nominator=wy_nominator
 df$w_denominator=w_denominator
 
 
-df$wx=NULL ##we don't need the floating Point approximations anymore
+df$wx=NULL ## drop the floating point approximations
 df$wy=NULL
 
 
+### 9.4 Export the solution tree ####
 
-
-### 9.4 Exporting the dataframe ####
-
-data.table::fwrite(df,"solutionTree.csv",row.names = F,sep = ",")
+data.table::fwrite(df,"solution_tree.csv",row.names = F,sep = ",")
