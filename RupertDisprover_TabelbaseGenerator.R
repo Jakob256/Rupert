@@ -1013,14 +1013,36 @@ df=data.frame(T_ID,T_nodetype,T_nrChildren, ## meta stuff
               T_Q1_index,T_Q2_index,T_Q3_index,
               T_r,T_s_p,T_s_q)
 df=as.data.table(df)
-
 df=df[1:(nextUnused-1)]
-
 colnames(df)=substr(colnames(df),3,100)
 
 
-## Step 1) Storing the interval endpoints as integers
+### 9.1 Fixing the differences between Sage and R ####
 
+# R starts counting from 1, while SageMath starts counting from 0
+
+df[,ID:=ID-1]
+df[,IDfirstChild:=IDfirstChild-1]
+
+df[,P1_index:=P1_index-1]
+df[,P2_index:=P2_index-1]
+df[,P3_index:=P3_index-1]
+df[,Q1_index:=Q1_index-1]
+df[,Q2_index:=Q2_index-1]
+df[,Q3_index:=Q3_index-1]
+df[,S_index:=S_index-1]
+
+table(df$s_p) ## s_p is always 1
+df$s_p=NULL   ## and can therefore be removed
+
+## change from s_q (-1,1) to sigma_Q (1,0)
+df[,s_q:=(1-s_q)/2]
+setnames(df,"s_q","sigma_Q")
+
+
+
+
+### 9.2 Storing the interval endpoints as integers ####
 
 factorIntervals=2^13*3*5^4 ## = 15360000 seems to be optimal
 
@@ -1050,8 +1072,7 @@ df[,A_max :=round(A_max *factorIntervals)]
 
 
 
-
-## Step 2) Making w in the weak Theorem rational
+### 9.3 Making the vector w in the global theorem rational ####
 
 ## we don't want to access the df unnecessarily 
 wx=df$wx
@@ -1077,22 +1098,13 @@ df$wx_nominator=wx_nominator
 df$wy_nominator=wy_nominator
 df$w_denominator=w_denominator
 
-## Step 3) Removing unnecessary stuff:
 
-df$wx=NULL
+df$wx=NULL ##we don't need the floating Point approximations anymore
 df$wy=NULL
-table(df$s_p) ## is always 1
-df$s_p=NULL ## removing s_p
 
 
-## Step 4) Saving everything:
-
-## 3 ways to save the same thing:
-
-## 1)
-saveRDS(df,"sexypoly-solutionTree_try22012025.rds")
-
-## 2) FUCK FWRITE
-data.table::fwrite(df,"sexypoly-solutionTree_try22012025.csv",row.names = F,sep = ";")
 
 
+### 9.4 Exporting the dataframe ####
+
+data.table::fwrite(df,"solutionTree.csv",row.names = F,sep = ",")
