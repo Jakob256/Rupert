@@ -1,7 +1,0 @@
-venv/*
-venv1/*
-
-/data/solution_tree.csv
-.ipynb_checkpoints
-.DS_Store
-play.ipynb
